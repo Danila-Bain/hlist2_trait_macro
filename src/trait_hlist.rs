@@ -1,12 +1,175 @@
-use crate::Nil;
-use crate::Cons;
 
+// #[macro_export]
+// macro_rules! impl_trait_hlist {
+//     ($TraitHList:ident {
+//         trait $Trait {
+//
+//         }
+//     }) => {
+//
+//     };
+// }
+
+#[macro_export]
+macro_rules! impl_trait_hlist {
+    ($hlist_trait:ident {
+        trait $base_trait:ident {
+            $(fn $fn_name:ident(&self) -> $return_ty:ty;)*
+        }
+    }) => {
+        $crate::paste!(
+            trait $hlist_trait {
+                $(
+                    type [<$fn_name:upper Output>];
+                    fn $fn_name(&self) -> Self::[<$fn_name:upper Output>];
+                )*
+
+                $(
+                    $crate::impl_trait_hlist!(@bool_methods $fn_name $return_ty);
+                )*
+            }
+
+            impl $hlist_trait for $crate::Nil {
+                $(
+                    type [<$fn_name:upper Output>] = $crate::Nil;
+                    fn $fn_name(&self) -> Self::[<$fn_name:upper Output>] {
+                        $crate::Nil
+                    }
+                )*
+
+                    $(
+                        $crate::impl_trait_hlist!(@bool_methods_impl_nil $fn_name $return_ty);
+                    )*
+            }
+
+            impl<H: $base_trait, T: $hlist_trait> $hlist_trait for $crate::Cons<H, T> {
+                $(
+                    type [<$fn_name:upper Output>] = $crate::Cons<$return_ty, T::[<$fn_name:upper Output>]>;
+                    fn $fn_name(&self) -> Self::[<$fn_name:upper Output>] {
+                        Cons(self.head().$fn_name(), self.tail().$fn_name())
+                    }
+                )*
+
+                    $(
+                        $crate::impl_trait_hlist!(@bool_methods_impl_cons $fn_name $return_ty);
+                    )*
+            }
+            );
+    };
+    
+    (@bool_methods $fn_name:ident bool) => {
+        $crate::paste!(
+            fn [<all_$fn_name>](&self) -> bool;
+            fn [<any_$fn_name>](&self) -> bool;
+        );
+    };
+    
+    (@bool_methods $fn_name:ident $return_ty:ty) => {
+        // No extra methods for non-bool return types
+    };
+    
+    (@bool_methods_impl_nil $fn_name:ident bool) => {
+        $crate::paste!(
+            fn [<all_$fn_name>](&self) -> bool {
+                true
+            }
+            fn [<any_$fn_name>](&self) -> bool {
+                false
+            }
+        );
+    };
+    
+    (@bool_methods_impl_nil $fn_name:ident $return_ty:ty) => {
+        // No implementation for non-bool return types
+    };
+    
+    (@bool_methods_impl_cons $fn_name:ident bool) => {
+        $crate::paste!(
+            fn [<all_$fn_name>](&self) -> bool {
+                self.head().$fn_name() && self.tail().[<all_$fn_name>]()
+            }
+            fn [<any_$fn_name>](&self) -> bool {
+                self.head().$fn_name() || self.tail().[<any_$fn_name>]()
+            }
+        );
+    };
+    
+    (@bool_methods_impl_cons $fn_name:ident $return_ty:ty) => {
+        // No implementation for non-bool return types
+    };
+}
 
 
 #[cfg(test)]
-mod test {
+mod macro_tests{
+    use crate::*;
 
-    use super::*;
+    #[allow(dead_code)]
+    #[test]
+    fn empty_traits() {
+        trait MyTrait {
+           fn a(); 
+        }
+
+        // export nothing
+        impl_trait_hlist!(MyTraitHlist {
+            trait MyTrait {}
+        });
+
+    }
+    
+    #[allow(dead_code)]
+    #[test]
+    fn test() {
+        trait MyTrait {
+            fn a(&self) -> u32;
+            fn b(&self) -> bool;
+        }
+
+        impl MyTrait for bool {
+            fn a(&self) -> u32 {
+                *self as u32
+            }
+            fn b(&self) -> bool {
+                *self
+            }
+        }
+
+        impl MyTrait for i32 {
+            fn a(&self) -> u32 {
+                *self as u32
+            }
+            fn b(&self) -> bool {
+                *self != 0
+            }
+        }
+
+        impl_trait_hlist!(MyTraitHlist {
+           trait MyTrait {
+               fn a(&self) -> u32;
+               fn b(&self) -> bool;
+           }
+        });
+
+
+        let hlist = Cons(false, Cons(true, Cons(0, Cons(10, Nil))));
+        assert_eq!(Cons(0, Cons(1, Cons(0, Cons(10, Nil)))), hlist.a());
+        assert_eq!(
+            Cons(false, Cons(true, Cons(false, Cons(true, Nil)))),
+            hlist.b()
+        );
+        assert!(!hlist.all_b());
+        assert!(hlist.any_b());
+        assert!(!Cons(false, Cons(false, Nil)).any_b());
+        assert!(Cons(true, Cons(true, Nil)).all_b());
+    }
+}
+
+
+#[cfg(test)]
+mod naive_tests {
+    use crate::Nil;
+    use crate::Cons;
 
     #[test]
     fn my_trait_no_arguments() {
