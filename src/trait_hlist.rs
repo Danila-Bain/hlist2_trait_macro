@@ -1,4 +1,3 @@
-
 // #[macro_export]
 // macro_rules! impl_trait_hlist {
 //     ($TraitHList:ident {
@@ -9,6 +8,7 @@
 //
 //     };
 // }
+//
 
 #[macro_export]
 macro_rules! impl_trait_hlist {
@@ -17,7 +17,7 @@ macro_rules! impl_trait_hlist {
             $(fn $fn_name:ident(&self) -> $return_ty:ty;)*
         }
     }) => {
-        $crate::paste!(
+        $crate::paste::paste!(
             trait $hlist_trait {
                 $(
                     type [<$fn_name:upper Output>];
@@ -56,20 +56,20 @@ macro_rules! impl_trait_hlist {
             }
             );
     };
-    
+
     (@bool_methods $fn_name:ident bool) => {
-        $crate::paste!(
+        $crate::paste::paste!(
             fn [<all_$fn_name>](&self) -> bool;
             fn [<any_$fn_name>](&self) -> bool;
         );
     };
-    
+
     (@bool_methods $fn_name:ident $return_ty:ty) => {
         // No extra methods for non-bool return types
     };
-    
+
     (@bool_methods_impl_nil $fn_name:ident bool) => {
-        $crate::paste!(
+        $crate::paste::paste!(
             fn [<all_$fn_name>](&self) -> bool {
                 true
             }
@@ -78,13 +78,13 @@ macro_rules! impl_trait_hlist {
             }
         );
     };
-    
+
     (@bool_methods_impl_nil $fn_name:ident $return_ty:ty) => {
         // No implementation for non-bool return types
     };
-    
+
     (@bool_methods_impl_cons $fn_name:ident bool) => {
-        $crate::paste!(
+        $crate::paste::paste!(
             fn [<all_$fn_name>](&self) -> bool {
                 self.head().$fn_name() && self.tail().[<all_$fn_name>]()
             }
@@ -93,7 +93,7 @@ macro_rules! impl_trait_hlist {
             }
         );
     };
-    
+
     (@bool_methods_impl_cons $fn_name:ident $return_ty:ty) => {
         // No implementation for non-bool return types
     };
@@ -101,23 +101,22 @@ macro_rules! impl_trait_hlist {
 
 
 #[cfg(test)]
-mod macro_tests{
+mod macro_tests {
     use crate::*;
 
     #[allow(dead_code)]
     #[test]
     fn empty_traits() {
         trait MyTrait {
-           fn a(); 
+            fn a();
         }
 
         // export nothing
         impl_trait_hlist!(MyTraitHlist {
             trait MyTrait {}
         });
-
     }
-    
+
     #[allow(dead_code)]
     #[test]
     fn test() {
@@ -151,25 +150,20 @@ mod macro_tests{
            }
         });
 
-
-        let hlist = Cons(false, Cons(true, Cons(0, Cons(10, Nil))));
-        assert_eq!(Cons(0, Cons(1, Cons(0, Cons(10, Nil)))), hlist.a());
-        assert_eq!(
-            Cons(false, Cons(true, Cons(false, Cons(true, Nil)))),
-            hlist.b()
-        );
+        let hlist = hlist![false, true, 0, 10];
+        assert_eq!(hlist![0, 1, 0, 10], hlist.a());
+        assert_eq!(hlist![false, true, false, true], hlist.b());
         assert!(!hlist.all_b());
         assert!(hlist.any_b());
-        assert!(!Cons(false, Cons(false, Nil)).any_b());
-        assert!(Cons(true, Cons(true, Nil)).all_b());
+        assert!(!hlist![false, false, false].any_b());
+        assert!(hlist![true, true, true].all_b());
     }
 }
 
-
 #[cfg(test)]
 mod naive_tests {
-    use crate::Nil;
     use crate::Cons;
+    use crate::Nil;
 
     #[test]
     fn my_trait_no_arguments() {
@@ -505,7 +499,7 @@ mod naive_tests {
                 return false;
             }
         }
-        
+
         impl<MyTraitAsRef: AsRef<dyn MyTrait>> MyTraitHList for Vec<MyTraitAsRef> {
             type AOutput = Vec<u32>;
             fn a(&self) -> Self::AOutput {
@@ -535,13 +529,15 @@ mod naive_tests {
         assert!(!Cons(false, Cons(false, Nil)).any_b());
         assert!(Cons(true, Cons(true, Nil)).all_b());
 
-        let array: [Box<dyn MyTrait>; _] = [Box::new(false), Box::new(true), Box::new(0), Box::new(10)];
+        let array: [Box<dyn MyTrait>; _] =
+            [Box::new(false), Box::new(true), Box::new(0), Box::new(10)];
         assert_eq!([0, 1, 0, 10], array.a());
         assert_eq!([false, true, false, true], array.b());
         assert!(!array.all_b());
         assert!(array.any_b());
-        
-        let vec: Vec<Box<dyn MyTrait>> = vec![Box::new(false), Box::new(true), Box::new(0), Box::new(10)];
+
+        let vec: Vec<Box<dyn MyTrait>> =
+            vec![Box::new(false), Box::new(true), Box::new(0), Box::new(10)];
         assert_eq!(vec![0, 1, 0, 10], vec.a());
         assert_eq!(vec![false, true, false, true], vec.b());
         assert!(!vec.all_b());
