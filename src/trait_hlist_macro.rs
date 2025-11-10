@@ -1,15 +1,3 @@
-// #[macro_export]
-// macro_rules! impl_trait_hlist {
-//     ($TraitHList:ident {
-//         trait $Trait {
-//
-//         }
-//     }) => {
-//
-//     };
-// }
-//
-
 #[macro_export]
 macro_rules! impl_trait_hlist {
     ($hlist_trait:ident {
@@ -99,27 +87,12 @@ macro_rules! impl_trait_hlist {
     };
 }
 
-
 #[cfg(test)]
 mod macro_tests {
     use crate::*;
 
-    #[allow(dead_code)]
     #[test]
-    fn empty_traits() {
-        trait MyTrait {
-            fn a();
-        }
-
-        // export nothing
-        impl_trait_hlist!(MyTraitHlist {
-            trait MyTrait {}
-        });
-    }
-
-    #[allow(dead_code)]
-    #[test]
-    fn test() {
+    fn simple() {
         trait MyTrait {
             fn a(&self) -> u32;
             fn b(&self) -> bool;
@@ -158,6 +131,7 @@ mod macro_tests {
         assert!(!hlist![false, false, false].any_b());
         assert!(hlist![true, true, true].all_b());
     }
+    
 }
 
 #[cfg(test)]

@@ -1,0 +1,13 @@
+[package]
+name = "impl_trait_hlist_macro"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+# https://github.com/dtolnay/proc-macro-workshop#debugging-tips
+syn = { version = "*", features = ["full"] }
+quote = "*"
+proc-macro2 = "*"

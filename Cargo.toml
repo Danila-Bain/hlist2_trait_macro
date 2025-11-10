@@ -1,7 +1,8 @@
 [package]
-name = "trait-list"
+name = "trait_hlist"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
 paste = "1.0.15"
+impl_trait_hlist_macro = {path = "impl_trait_hlist_macro"}
