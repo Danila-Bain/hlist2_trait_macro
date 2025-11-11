@@ -49,9 +49,18 @@ impl syn::parse::Parse for HListTraitInput {
         syn::braced!(inner in input);
         let mut fns = Vec::new();
         while !inner.is_empty() {
-            let sig: syn::Signature = inner.parse()?;
-            inner.parse::<syn::Token![;]>()?;
-            fns.push(sig);
+            match inner.parse()? {
+                syn::TraitItem::Fn(syn::TraitItemFn {attrs, sig, default, ..}) => {
+                    fns.push(sig);
+                    assert!(default.is_none(), "Default implementation is not supported."); 
+                    assert!(attrs.is_empty(), "Attributes for methods are not supported."); 
+                }
+                syn::TraitItem::Const(_trait_item_const) => panic!("Const items in traits are not supported."),
+                syn::TraitItem::Type(_trait_item_type) => panic!("Type items in traits are not supported."),
+                syn::TraitItem::Macro(_trait_item_macro) => panic!("Macro items in traits are not supported."),
+                syn::TraitItem::Verbatim(_token_stream) => panic!("Extra tokens in traits are not supported."),
+                _ => panic!("Unsupported item in trait."),
+            }
         }
 
         Ok(Self {
