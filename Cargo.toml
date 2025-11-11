@@ -1,5 +1,5 @@
 [package]
-name = "hlist2_trait_hlist_macro"
+name = "hlist2_trait_macro"
 version = "0.1.0"
 edition = "2024"
 

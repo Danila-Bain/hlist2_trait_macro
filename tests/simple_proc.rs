@@ -1,5 +1,5 @@
 use hlist2::hlist;
-use hlist2_trait_hlist_macro::TraitHList;
+use hlist2_trait_macro::TraitHList;
 
 #[test]
 fn simple_trait() {
@@ -94,17 +94,17 @@ fn everything_at_once() {
     );
 }
 
-// #[test]
-// fn generic_into_iter() {
-//     todo!();
-//     // TraitHList!{
-//     //     IntoIteratorHlist for trait IntoIterator<T> {
-//     //         type Item;
-//     //         type IntoIter: Iterator<Item = Self::Item>;
-//     //         fn into_iter(self) -> Self::IntoIter;
-//     //     }
-//     // }
-// }
+#[test]
+fn generic_into_iter() {
+    todo!();
+    TraitHList!{
+        IntoIteratorHlist for trait IntoIterator<T> {
+            type Item;
+            type IntoIter: Iterator<Item = Self::Item>;
+            fn into_iter(self) -> Self::IntoIter;
+        }
+    }
+}
 
 // #[test]
 // fn parameters_in_methods() {
