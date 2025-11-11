@@ -3,19 +3,20 @@
 version = 4
 
 [[package]]
-name = "impl_trait_hlist_macro"
+name = "hlist2"
+version = "0.0.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f7eb54f4bac1a3a7b45a3dcd8b60d78a2d0c06857695fb8a47b913e50f52c3ad"
+
+[[package]]
+name = "hlist2_trait_hlist_macro"
 version = "0.1.0"
 dependencies = [
+ "hlist2",
  "proc-macro2",
  "quote",
  "syn",
 ]
-
-[[package]]
-name = "paste"
-version = "1.0.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
 
 [[package]]
 name = "proc-macro2"
@@ -44,14 +45,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-ident",
-]
-
-[[package]]
-name = "trait_hlist"
-version = "0.1.0"
-dependencies = [
- "impl_trait_hlist_macro",
- "paste",
 ]
 
 [[package]]

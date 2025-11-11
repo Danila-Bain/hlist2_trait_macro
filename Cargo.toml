@@ -1,8 +1,13 @@
 [package]
-name = "trait_hlist"
+name = "hlist2_trait_hlist_macro"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+proc-macro = true
+
 [dependencies]
-paste = "1.0.15"
-impl_trait_hlist_macro = {path = "impl_trait_hlist_macro"}
+syn = { version = "*", features = ["full"] }
+quote = "*"
+proc-macro2 = "*"
+hlist2 = "0.0.15"
