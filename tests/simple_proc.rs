@@ -28,6 +28,7 @@ fn simple_trait() {
     }
 
     TraitHList!(
+        // Comment is ignored
         MyTraitHlist for trait MyTrait {
             fn to_u32(&self) -> u32;
             fn to_bool(&self) -> bool;
@@ -46,7 +47,6 @@ fn simple_trait() {
 #[test]
 fn generic_into() {
     TraitHList! {
-        // Comment
         IntoHlist for trait Into<T> {
             fn into(self) -> T;
         }
@@ -58,7 +58,22 @@ fn generic_into() {
 }
 
 #[test]
-fn everything_at_once() {
+fn generic_into_renamed() {
+    TraitHList! {
+        IntoHlist for trait Into<T> {
+            #[name = hlist_into]
+            fn into(self) -> T;
+        }
+    }
+
+    let list = hlist![true, 1u8, 1u16, 1u32];
+    assert_eq!(hlist![1u64, 1u64, 1u64, 1u64], list.hlist_into(),);
+    assert_eq!(hlist![1u32, 1u32, 1u32, 1u32], list.hlist_into(),);
+    assert_eq!(hlist![1f64, 1f64, 1f64, 1f64], list.hlist_into(),);
+}
+
+#[test]
+fn generic_trait_0() {
     trait MyTrait<const N: usize, T: Into<i64>> {
         fn a<U: Into<i64>>(&self, x: i64, y: U, z: T) -> bool;
         fn b(self, x: i64, y: &i64, z: T) -> bool;
@@ -135,37 +150,37 @@ fn generic_parameters_in_methods() {
     );
 }
 
-//
-// #[test]
-// fn generic_trait() {
-//     #[allow(dead_code)]
-//     trait MyTrait<'a, T> {
-//         fn a(&self, x: T) -> bool;
-//         fn b(&self, x: T) -> bool;
-//         fn extra_one_ignored(self) -> Self;
-//     }
-//
-//     impl_trait_hlist_proc!(
-//         MyTraitHlist for trait MyTrait<'a, T: std::fmt::Display> where T: Copy {
-//             fn a(&self, x: T) -> bool;
-//             fn b(&self, x: T) -> bool;
-//         }
-//     );
-// }
-//
-// #[test]
-// fn generic_trait_2() {
-//     #[allow(dead_code)]
-//     trait MyTrait<'a, const N: usize, T> {
-//         fn a<'aa: 'a>(&'a self, x: &'aa T, y: [T; N]) -> bool;
-//         fn b(&self, x: T, y: [T; N]) -> bool;
-//         fn extra_one_ignored(self) -> Self;
-//     }
-//
-//     impl_trait_hlist_proc!(
-//         MyTraitHlist for trait MyTrait<'a, const N: usize, T: std::fmt::Display> where {
-//             fn a<'aa: 'a>(&'a self, x: &'aa T, y: [T; N]) -> bool where T: Copy;
-//             fn b(&self, x: T, y: [T; N]) -> bool where T: Copy;
-//         }
-//     );
-// }
+
+#[test]
+fn generic_trait_1() {
+    #[allow(dead_code)]
+    trait MyTrait<'a, T> {
+        fn a(&self, x: T) -> bool;
+        fn b(&self, x: T) -> bool;
+        fn extra_one_ignored(self) -> Self;
+    }
+
+    TraitHList!(
+        MyTraitHlist for trait MyTrait<'a, T: std::fmt::Display> where T: Copy {
+            fn a(&self, x: T) -> bool;
+            fn b(&self, x: T) -> bool;
+        }
+    );
+}
+
+#[test]
+fn generic_trait_2() {
+    #[allow(dead_code)]
+    trait MyTrait<'a, const N: usize, T> {
+        fn a<'aa: 'a>(&'a self, x: &'aa T, y: [T; N]) -> bool;
+        fn b(&self, x: T, y: [T; N]) -> bool;
+        fn extra_one_ignored(self) -> Self;
+    }
+
+    TraitHList!(
+        MyTraitHlist for trait MyTrait<'a, const N: usize, T: std::fmt::Display> where {
+            fn a<'aa: 'a>(&'a self, x: &'aa T, y: [T; N]) -> bool where T: Copy;
+            fn b(&self, x: T, y: [T; N]) -> bool where T: Copy;
+        }
+    );
+}
