@@ -1,10 +1,12 @@
-# `TraitHList` macro for `hlist2` crate (compile-time heterogeneous lists).
+# `TraitHList` 
 
-This crate defines a procedural macro [`TraitHList!`] that automatically generates trait implementations
+`TraiHList` is a macro for `hlist2` crate (compile-time heterogeneous lists).
+
+This crate defines a procedural macro `TraitHList!` that automatically generates trait implementations
 for [heterogeneous lists](https://docs.rs/hlist2/latest/hlist2/macro.hlist.html)
 from the [`hlist2`](https://docs.rs/hlist2) crate.
 
-It allows you to apply any trait’s methods *element-wise* across all items in an [`hlist2::hlist!`],
+It allows you to apply any trait’s methods *element-wise* across all items in an `hlist2::hlist!` object,
 with support of generic parameters and lifetimes.
 
 ##  Features
@@ -67,7 +69,7 @@ fn main() {
 }
 ```
 
-== Why?
+## Why?
 
 Current implementation for iteration of heterogeneous collections like implemented in [`hlist2`] 
 is slow and limited. The alternative approach with `Vec<Box<dyn Trait>>` objects has overhead at runtime.
