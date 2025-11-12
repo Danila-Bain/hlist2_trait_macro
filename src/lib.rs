@@ -1,12 +1,119 @@
+/*!
+This crate defines a procedural macro [`TraitHList!`] that automatically generates trait implementations
+for [heterogeneous lists](https://docs.rs/hlist2/latest/hlist2/macro.hlist.html)
+from the [`hlist2`](https://docs.rs/hlist2) crate.
+
+It allows you to apply any trait’s methods *element-wise* across all items in an [`hlist2::hlist!`],
+with support of generic parameters and lifetimes.
+
+##  Features
+
+- 🟢 Automatically implements a new `*_HList` trait corresponding to any existing trait.  
+- 🟢 Supports traits with generic parameters, lifetimes, and `where` clauses.  
+- 🟢 Handles methods with all receiver types: `self`, `&self`, and `&mut self`.  
+- 🟢 Works with arbitrary argument and return types.  
+- ⚠️ Methods returning `bool` automatically gain `.all_*()` and `.any_*()` variants.  
+- 🟡 Method renaming supported with `#[name = "custom_name"]`.  
+
+## Example
+
+```rust
+use hlist2::hlist;
+use hlist2_trait_macro::TraitHList;
+
+trait Check {
+    fn is_integer(&self) -> bool;
+    fn is_positive(&self) -> bool;
+}
+
+impl Check for i32 {
+    fn is_integer(&self) -> bool{
+        true
+    }
+    fn is_positive(&self) -> bool {
+        *self > 0
+    }
+}
+impl Check for f64 {
+    fn is_integer(&self) -> bool{
+        false
+    }
+    fn is_positive(&self) -> bool {
+        *self > 0.0
+    }
+}
+
+TraitHList!{
+    CheckHList for trait Check {
+        fn is_integer(&self) -> bool;
+
+        #[name = are_positive]
+        fn is_positive(&self) -> bool;
+        
+    }
+}
+
+fn main() {
+    let xs = hlist![1, -2, 3, -5.0, 6.0, -7.0];
+
+    assert_eq!(xs.is_integer(), hlist![true, true, true, false, false, false]);
+    assert!(xs.all_is_integer() == false);
+    assert!(xs.any_is_integer() == true);
+    
+    assert_eq!(xs.are_positive(), hlist![true, false, true, false, true, false]);
+    assert!(xs.all_are_positive() == false);
+    assert!(xs.any_are_positive() == true);
+}
+```
+
+== Why?
+
+Current implementation for iteration of heterogeneous collections like implemented in [`hlist2`] 
+is slow and limited. The alternative approach with `Vec<Box<dyn Trait>>` objects has overhead at runtime.
+Implementation of [`TraitHList!`] acts like an unrolled version of loops over static [`hlist2::hlist!`].
+Custom traits with methods accepting mutable references can achieve many things that are also possible 
+with regular loops, but do not require objects to have the same type. This is especially useful
+for types, that rely on anonymous functions without dynamic dispatch with `dyn` traits.
+
+```rust
+use hlist2::hlist;
+use hlist2_trait_macro::TraitHList;
+
+trait AddOne {
+    fn add_one(&self, x: &mut usize);
+}
+
+impl AddOne for () {
+    fn add_one(&self, x: &mut usize) {
+       *x += 1;
+    }
+}
+
+TraitHList!{
+    AddOneHList for trait AddOne {
+        fn add_one(&self, x: &mut usize);
+    }
+}
+
+let mut x = 0;
+let list = hlist![(), (), (), (), ()];
+list.add_one(&mut x);
+assert!(x == 5);
+```
+
+
+*/
 mod angle_bracketed_generic_params;
 use angle_bracketed_generic_params::AngleBracketedGenericParams;
+mod generic_param_to_arg;
+use generic_param_to_arg::generic_param_to_arg;
 
 /// Macro, that generates trait implementations for heterogeneous lists
 /// whose elements share provided trait.
 ///
 /// The `TraitHList!` macro automatically generates trait implementations 
-/// for heterogeneous lists (`hlist!` from the `hlist2` crate), allowing 
-/// trait methods to be applied elementwise across all list elements. 
+/// for heterogeneous lists (`hlist2::hlist!`), allowing 
+/// trait methods to be applied element-wise across all list elements. 
 ///
 /// It supports traits with arbitrary generics, lifetimes, const parameters,
 /// and `where` clauses, as well as methods with any receiver form 
@@ -15,7 +122,7 @@ use angle_bracketed_generic_params::AngleBracketedGenericParams;
 /// The macro defines a new trait (e.g. `MyTraitHlist`) mirroring 
 /// the methods of the original one (e.g. `MyTrait`). Implemented
 /// of types that implement the source trait. Each listed method produces
-/// an `hlist!` of results, preserving element order. 
+/// an `hlist2::hlist!` of results, preserving element order. 
 /// Methods returning `bool` automatically gain two aggregators: 
 /// `.all_<method>()` and `.any_<method>()`. 
 ///
@@ -28,7 +135,7 @@ use angle_bracketed_generic_params::AngleBracketedGenericParams;
 ///
 /// ## Basic Usage
 ///
-/// ```r
+/// ```rust,ignore
 /// use hlist2_trait_macro::TraitHList;
 ///
 /// TraitHList!{
@@ -106,7 +213,7 @@ use angle_bracketed_generic_params::AngleBracketedGenericParams;
 /// This generates a method `hlist_into` instead of the default `into`.
 ///
 /// ## Generic Traits
-///
+///TraitHList
 /// ```rust
 /// use hlist2::hlist;
 /// use hlist2_trait_macro::TraitHList;
@@ -147,7 +254,7 @@ use angle_bracketed_generic_params::AngleBracketedGenericParams;
 /// Generated methods will operate on `hlist!`s of arrays `[i64; N]` with consistent `N`.
 ///
 ///
-/// Also note, that paramters passed by value must implement either `Copy` or `Clone`, 
+/// Also note, that parameters passed by value must implement either `Copy` or `Clone`, 
 /// because they are passed to each element of the list.
 ///
 /// ## Comments and Unused Methods
@@ -164,7 +271,7 @@ use angle_bracketed_generic_params::AngleBracketedGenericParams;
 /// | Elementwise trait method calls     | ✅ | Applies trait methods to each list element |
 /// | Arbitrary trait-level generics and bounds | ✅ | Generic, const, lifetime parameters |
 /// | Trait-level `where` clauses        | ✅ | Fully supported |
-/// | Arbitrary method-level generics and bounds | ⚠️ | Everywhere except in return type |
+/// | Arbitrary method-level generics and bounds | ⚠️ | Generic lifetimes introduce additional explicit lifetime bounds |
 /// | Method-level `where` clauses             | ✅ | Fully supported  |
 /// | Different receiver forms           | ✅ | `self`, `&self`, `&mut self` |
 /// | Method renaming                    | ✅ | `#[name = ...]` attribute |
@@ -196,6 +303,9 @@ struct TraitHListMethod {
     sig: syn::Signature,
 
     item_output: syn::Type,
+    item_generic_params: Vec<syn::GenericParam>,
+    item_generic_args: Vec<syn::GenericArgument>,
+    item_where_clause: Option<syn::WhereClause>,
     hlist_output_ident: syn::Ident,
 
     args: proc_macro2::TokenStream,
@@ -256,11 +366,19 @@ impl TraitHListMethod {
 
             let hlist_output_ident =
                 quote::format_ident!("{}HListOutput", sig.ident.to_string().to_uppercase());
+            
+            let item_generic_params : Vec<syn::GenericParam> = sig.generics.params.clone().into_iter().collect();
+            let item_where_clause = sig.generics.where_clause.clone();
+
+
+            let item_generic_args : Vec<syn::GenericArgument> = item_generic_params.clone().into_iter().map(generic_param_to_arg).collect();
 
             let sig = syn::Signature {
-                output: syn::parse_quote! { -> Self::#hlist_output_ident},
+                output: syn::parse_quote! { -> Self::#hlist_output_ident<#(#item_generic_args),*>},
+                ident: hlist_fn_name.clone(),
                 ..sig.clone()
             };
+
 
             let (hlist_fn_name_all, hlist_fn_name_any) = if let syn::Type::Path(ref ty) =
                 item_output
@@ -304,6 +422,9 @@ impl TraitHListMethod {
                 hlist_fn_name_all,
                 hlist_fn_name_any,
                 sig,
+                item_generic_params,
+                item_generic_args,
+                item_where_clause,
                 item_output,
                 hlist_output_ident,
                 args,
@@ -379,16 +500,18 @@ impl TraitHListInput {
 
         let method_defs = methods.iter().map(
             |TraitHListMethod {
-                 hlist_output_ident: output,
+                 hlist_output_ident,
                  hlist_fn_name,
                  sig,
+                 item_generic_params,
+                 item_where_clause,
                  ..
              }| {
                 let sig = syn::Signature {
                     ident: hlist_fn_name.clone(),
                     ..sig.clone()
                 };
-                quote::quote! { type #output; #sig; }
+                quote::quote! { type #hlist_output_ident <#(#item_generic_params),*> #item_where_clause; #sig; }
             },
         );
 
@@ -424,16 +547,13 @@ impl TraitHListInput {
         let nil_impls = methods.iter().map(
             |TraitHListMethod {
                  sig,
-                 hlist_fn_name,
-                 hlist_output_ident: hlist_fn_output,
+                 hlist_output_ident,
+                 item_generic_params,
+                 item_where_clause,
                  ..
              }| {
-                let sig = syn::Signature {
-                    ident: hlist_fn_name.clone(),
-                    ..sig.clone()
-                };
                 quote::quote! {
-                    type #hlist_fn_output = hlist2::Nil;
+                    type #hlist_output_ident <#(#item_generic_params),*> = hlist2::Nil #item_where_clause; 
                     #sig { hlist2::Nil }
                 }
             },
@@ -475,11 +595,15 @@ impl TraitHListInput {
                  hlist_output_ident,
                  args,
                  args_cloned,
+                 item_generic_params,
+                item_generic_args,
+                 item_where_clause,
                  ..
              }| {
-                 let sig = syn::Signature { ident: hlist_fn_name.clone(), ..sig.clone()};
                  quote::quote! {
-                     type #hlist_output_ident = hlist2::Cons<#item_output, __HListTail::#hlist_output_ident>;
+
+                    type #hlist_output_ident <#(#item_generic_params),*> 
+                        = hlist2::Cons<#item_output, __HListTail::#hlist_output_ident<#(#item_generic_args),*>> #item_where_clause; 
                      #sig {
                          let hlist2::Cons(__hlist_head, __hlist_tail) = self;
                          hlist2::Cons(__hlist_head.#item_fn_name(#args_cloned), __hlist_tail.#hlist_fn_name(#args))
@@ -526,16 +650,8 @@ impl TraitHListInput {
         );
 
         let trait_generic_args: Vec<_> = trait_generic_params
-            .iter()
-            .map(|param| match param {
-                syn::GenericParam::Lifetime(syn::LifetimeParam { lifetime, .. }) => {
-                    quote::quote!(#lifetime)
-                }
-                syn::GenericParam::Type(syn::TypeParam { ident, .. }) => quote::quote!(#ident),
-                syn::GenericParam::Const(syn::ConstParam { ident, .. }) => {
-                    quote::quote!(#ident)
-                }
-            })
+            .clone().into_iter()
+            .map(generic_param_to_arg)
             .collect();
 
         quote::quote! {

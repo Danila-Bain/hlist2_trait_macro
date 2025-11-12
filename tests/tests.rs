@@ -140,7 +140,7 @@ fn generic_and_references() {
         SwapHList for trait MyTrait<T> {
             fn owned(self, x: T) where T: Clone;
             fn borrowed(& self, x: & T);
-            fn mut_borrowed<'a>(&'a mut self, x: &'a mut T);
+            fn mut_borrowed<'a>(&'a mut self, x: &'a mut T) where Self: 'a, T: 'a;
         }
     }
 }
@@ -195,8 +195,22 @@ fn generic_trait_2() {
 
     TraitHList!(
         MyTraitHlist for trait MyTrait<'a, const N: usize, T: std::fmt::Display> where {
-            fn a<'aa: 'a>(&'a self, x: &'aa T, y: [T; N]) -> bool where T: Copy;
+            fn a<'aa: 'a>(&'a self, x: &'aa T, y: [T; N]) -> bool where T: Copy, Self: 'aa, T: 'aa;
             fn b(&self, x: T, y: [T; N]) -> bool where T: Copy;
         }
     );
+}
+
+#[allow(dead_code)]
+#[test]
+fn generic_return_types() {
+
+    trait MyTrait {
+        type MyType<T> where T: Copy;
+    }
+
+    impl MyTrait for u64 {
+        type MyType<T> = T where T: Copy;
+    }
+
 }
