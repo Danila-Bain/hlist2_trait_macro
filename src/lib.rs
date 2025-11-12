@@ -1,10 +1,168 @@
-use proc_macro;
-use quote;
-use syn;
-
 mod angle_bracketed_generic_params;
 use angle_bracketed_generic_params::AngleBracketedGenericParams;
 
+/// Macro, that generates trait implementations for heterogeneous lists
+/// whose elements share provided trait.
+///
+/// The `TraitHList!` macro automatically generates trait implementations 
+/// for heterogeneous lists (`hlist!` from the `hlist2` crate), allowing 
+/// trait methods to be applied elementwise across all list elements. 
+///
+/// It supports traits with arbitrary generics, lifetimes, const parameters,
+/// and `where` clauses, as well as methods with any receiver form 
+/// (`self`, `&self`, `&mut self`) and arbitrary parameter types.
+///
+/// The macro defines a new trait (e.g. `MyTraitHlist`) mirroring 
+/// the methods of the original one (e.g. `MyTrait`). Implemented
+/// of types that implement the source trait. Each listed method produces
+/// an `hlist!` of results, preserving element order. 
+/// Methods returning `bool` automatically gain two aggregators: 
+/// `.all_<method>()` and `.any_<method>()`. 
+///
+/// Individual methods can be renamed with `#[name = ...]`.
+///
+/// In essence, `TraitHList!` extends any trait to operate 
+/// seamlessly over heterogeneous lists, as a replacement for lacking 
+/// iteration capabilities.
+///
+///
+/// ## Basic Usage
+///
+/// ```rust
+/// TraitHList!{
+///     HListTraitName for trait TraitName { 
+///         <methods of TraitName without default implementations>
+///     }
+/// };
+/// ```
+///
+/// ```rust
+/// use hlist2::hlist;
+/// use hlist2_trait_macro::TraitHList;
+///
+/// trait MyTrait {
+///     fn to_u32(&self) -> u32;
+///     fn to_bool(&self) -> bool;
+/// }
+///
+/// impl MyTrait for bool {
+///     fn to_u32(&self) -> u32 { *self as u32 }
+///     fn to_bool(&self) -> bool { *self }
+/// }
+///
+/// impl MyTrait for i32 {
+///     fn to_u32(&self) -> u32 { *self }
+///     fn to_bool(&self) -> bool { *self != 0 }
+/// }
+///
+/// TraitHList!(
+///     MyTraitHList for trait MyTrait {
+///         fn to_u32(&self) -> u32;
+///         fn to_bool(&self) -> bool;
+///     }
+/// );
+///
+/// let l = hlist![false, true, 0, 10];
+/// assert_eq!(hlist![0, 1, 0, 10], l.to_u32());
+/// assert_eq!(hlist![false, true, false, true], l.to_bool());
+/// assert!(!l.all_to_bool());
+/// assert!(l.any_to_bool());
+/// ```
+///
+/// - The macro defines a trait `MyTraitHList` and implements it 
+///   for all `hlist!` combinations of types that implement `MyTrait`.
+/// - Each method in the `MyTraitHList` acts **elementwise** on the list:
+///   - `l.to_u32()` calls `to_u32()` on each element.
+///   - `l.to_bool()` does the same.
+/// - For methods that return bool, macro also provides:
+///   - `.all_<method>()` — returns `true` if all results are `true`.
+///   - `.any_<method>()` — returns `true` if any result is `true`.
+///   `.all_` and `.any_` methods are lazily evaluated from head to tail.
+///
+/// ## Renaming Methods
+///
+/// Each method can be renamed in the HList version 
+/// using attribute `#[name = ...]`, which can be
+/// usefull to avoid naming collisions.
+/// ```rust
+/// TraitHList! {
+///     IntoHlist for trait Into<T> {
+///         #[name = hlist_into]
+///         fn into(self) -> T;
+///     }
+/// }
+///
+/// let list = hlist![true, 1u8, 1u16, 1u32];
+/// assert_eq!(hlist![1u64, 1u64, 1u64, 1u64], list.hlist_into());
+/// ```
+///
+///
+/// This generates a method `hlist_into` instead of the default `into`.
+///
+/// ## Generic Traits
+///
+/// ```rust
+/// trait MyTrait<const N: usize, T: Into<i64>> {
+///     fn a<U: Into<i64>>(&self, x: i64, y: U, z: T) -> bool;
+///     fn b(self, x: i64, y: &i64, z: T) -> bool;
+/// }
+///
+/// impl<const N: usize, T: Into<i64>> MyTrait<N, T> for [i64; N] {
+///     fn a<U: Into<i64>>(&self, x: i64, y: U, z: T) -> bool {
+///         (self.into_iter().sum::<i64>() + x + y.into() + z.into()) == 0
+///     }
+///     fn b(self, x: i64, y: &i64, z: T) -> bool {
+///         (self.into_iter().sum::<i64>() + x + y + z.into()) == 0
+///     }
+/// }
+///
+/// TraitHList! {
+///     MyTraitHlist for trait MyTrait<const N: usize, T: Into<i64>> {
+///         fn a<U: Into<i64>>(&self, x: i64, y: U, z: T) -> bool where T: Copy, U: Copy;
+///         fn b(self, x: i64, y: &i64, z: T) -> bool where T: Clone;
+///     }
+/// }
+///
+/// // Note that size must be the same, because N is the parameter of the trait, not methods
+/// let h0 = hlist![[0; 4], [1; 4], [2; 4], [3; 4], [4; 4],];
+///
+/// assert_eq!(
+///     hlist![false, true, false, false, false],
+///     h0.a(0i64, 4u32, -8i16)
+/// );
+/// assert_eq!(
+///     hlist![false, true, false, false, false],
+///     h0.b(0i64, &4i64, -8i16)
+/// );
+/// ```
+///
+/// Generated methods will operate on `hlist!`s of arrays `[i64; N]` with consistent `N`.
+///
+///
+/// Also note, that paramters passed by value must implement either `Copy` or `Clone`, 
+/// because they are passed to each element of the list.
+///
+/// ## Comments and Unused Methods
+///
+/// Any methods omitted in the macro definition are ignored.  
+/// Comments are safely ignored as well.
+///
+/// ---
+///
+/// ## Summary of Features
+///
+/// | Feature                            | Supported | Description |
+/// |------------------------------------|------------|--------------|
+/// | Elementwise trait method calls     | ✅ | Applies trait methods to each list element |
+/// | Arbitrary trait-level generics and bounds | ✅ | Generic, const, lifetime parameters |
+/// | Trait-level `where` clauses        | ✅ | Fully supported |
+/// | Arbitrary method-level generics and bounds | ⚠️ | Everywhere exept in return type |
+/// | Method-level `where` clauses             | ✅ | Fully supported  |
+/// | Different receiver forms           | ✅ | `self`, `&self`, `&mut self` |
+/// | Method renaming                    | ✅ | `#[name = ...]` attribute |
+/// | Additional convenience methods     | ✅ | `any_*`, `all_*` for `bool`-returning methods |
+/// | Comments in macro body             | ✅ | Ignored |
+/// | Associated types in traits | ⛔ | Not planned until usecase if found |
 #[allow(non_snake_case)]
 #[proc_macro]
 pub fn TraitHList(input: proc_macro::TokenStream) -> proc_macro::TokenStream {

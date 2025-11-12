@@ -128,6 +128,22 @@ fn parameters_in_methods() {
     );
 }
 
+#[test]
+fn generic_and_references() {
+    #[allow(dead_code)]
+    trait MyTrait<T> {
+        fn owned(self, x: T);
+        fn borrowed(&self, x: &T);
+        fn mut_borrowed<'a>(&'a mut self, x: &'a mut T);
+    }
+    TraitHList! {
+        SwapHList for trait MyTrait<T> {
+            fn owned(self, x: T) where T: Clone;
+            fn borrowed(& self, x: & T);
+            fn mut_borrowed<'a>(&'a mut self, x: &'a mut T);
+        }
+    }
+}
 
 #[test]
 fn generic_parameters_in_methods() {
@@ -136,7 +152,8 @@ fn generic_parameters_in_methods() {
         fn a(&self, x: impl Copy) -> u32;
         fn b<T>(&self, x: T) -> bool;
         fn c<T>(&self, x: T) -> bool
-            where T: std::fmt::Display;
+        where
+            T: std::fmt::Display;
         fn extra_one_ignored(self) -> Self;
     }
 
@@ -149,7 +166,6 @@ fn generic_parameters_in_methods() {
         }
     );
 }
-
 
 #[test]
 fn generic_trait_1() {

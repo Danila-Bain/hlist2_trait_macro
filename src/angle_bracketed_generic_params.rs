@@ -1,5 +1,3 @@
-use syn;
-
 pub struct AngleBracketedGenericParams {
     #[allow(dead_code)]
     pub lt_token: syn::Token![<],
