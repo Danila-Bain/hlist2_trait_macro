@@ -28,10 +28,12 @@ use angle_bracketed_generic_params::AngleBracketedGenericParams;
 ///
 /// ## Basic Usage
 ///
-/// ```rust
+/// ```r
+/// use hlist2_trait_macro::TraitHList;
+///
 /// TraitHList!{
-///     HListTraitName for trait TraitName { 
-///         <methods of TraitName without default implementations>
+///     HListTraitName for trait TraitName<...> where ... { 
+///         // methods...
 ///     }
 /// };
 /// ```
@@ -50,8 +52,8 @@ use angle_bracketed_generic_params::AngleBracketedGenericParams;
 ///     fn to_bool(&self) -> bool { *self }
 /// }
 ///
-/// impl MyTrait for i32 {
-///     fn to_u32(&self) -> u32 { *self }
+/// impl MyTrait for i8 {
+///     fn to_u32(&self) -> u32 { *self as u32 }
 ///     fn to_bool(&self) -> bool { *self != 0 }
 /// }
 ///
@@ -77,7 +79,8 @@ use angle_bracketed_generic_params::AngleBracketedGenericParams;
 /// - For methods that return bool, macro also provides:
 ///   - `.all_<method>()` — returns `true` if all results are `true`.
 ///   - `.any_<method>()` — returns `true` if any result is `true`.
-///   `.all_` and `.any_` methods are lazily evaluated from head to tail.
+///
+///   `.all_*` and `.any_*` methods are lazily evaluated from head to tail.
 ///
 /// ## Renaming Methods
 ///
@@ -85,6 +88,9 @@ use angle_bracketed_generic_params::AngleBracketedGenericParams;
 /// using attribute `#[name = ...]`, which can be
 /// usefull to avoid naming collisions.
 /// ```rust
+/// use hlist2::hlist;
+/// use hlist2_trait_macro::TraitHList;
+///
 /// TraitHList! {
 ///     IntoHlist for trait Into<T> {
 ///         #[name = hlist_into]
@@ -92,8 +98,8 @@ use angle_bracketed_generic_params::AngleBracketedGenericParams;
 ///     }
 /// }
 ///
-/// let list = hlist![true, 1u8, 1u16, 1u32];
-/// assert_eq!(hlist![1u64, 1u64, 1u64, 1u64], list.hlist_into());
+/// let list = hlist![true, 8u8, 16u16, 32u32];
+/// assert_eq!(hlist![1u64, 8u64, 16u64, 32u64], list.hlist_into());
 /// ```
 ///
 ///
@@ -102,6 +108,8 @@ use angle_bracketed_generic_params::AngleBracketedGenericParams;
 /// ## Generic Traits
 ///
 /// ```rust
+/// use hlist2::hlist;
+/// use hlist2_trait_macro::TraitHList;
 /// trait MyTrait<const N: usize, T: Into<i64>> {
 ///     fn a<U: Into<i64>>(&self, x: i64, y: U, z: T) -> bool;
 ///     fn b(self, x: i64, y: &i64, z: T) -> bool;
@@ -156,7 +164,7 @@ use angle_bracketed_generic_params::AngleBracketedGenericParams;
 /// | Elementwise trait method calls     | ✅ | Applies trait methods to each list element |
 /// | Arbitrary trait-level generics and bounds | ✅ | Generic, const, lifetime parameters |
 /// | Trait-level `where` clauses        | ✅ | Fully supported |
-/// | Arbitrary method-level generics and bounds | ⚠️ | Everywhere exept in return type |
+/// | Arbitrary method-level generics and bounds | ⚠️ | Everywhere except in return type |
 /// | Method-level `where` clauses             | ✅ | Fully supported  |
 /// | Different receiver forms           | ✅ | `self`, `&self`, `&mut self` |
 /// | Method renaming                    | ✅ | `#[name = ...]` attribute |
