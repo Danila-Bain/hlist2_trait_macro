@@ -114,20 +114,31 @@ impl HListTraitInput {
                     if matches!(&**ty, syn::Type::Path(tp)
                         if tp.qself.is_none() && tp.path.is_ident("bool"))
             );
-            let args : Vec<proc_macro2::TokenStream> = sig.inputs.iter().filter_map(|fn_arg| match fn_arg {
-                syn::FnArg::Receiver(_) => None, 
-                syn::FnArg::Typed(pat_type) => match &*pat_type.pat {
-                    syn::Pat::Ident(ident) => Some(quote::quote!(#ident)),
-                    _ => panic!(
-                        "Unsupported argument pattern in function '{}': only simple identifiers are supported",
-                        sig.ident
-                    ),
-                },
-            }).collect();
+
+            let mut args = vec![];
+            let mut args_cloned = vec![];
+            for fn_arg in sig.inputs.iter() {
+                match fn_arg {
+                    syn::FnArg::Receiver(_) => {}, 
+                    syn::FnArg::Typed(syn::PatType {pat, ty, ..}) => match &**pat {
+                        syn::Pat::Ident(ident) => {
+                            args.push(quote::quote!(#ident));
+                            match **ty {
+                                syn::Type::Reference(_) =>args_cloned.push(quote::quote!(#ident)), 
+                                _ => args_cloned.push(quote::quote!(Clone::clone(&#ident))),
+                            }
+                        },
+                        _ => panic!(
+                            "Unsupported argument pattern in function '{}': only simple identifiers are supported",
+                            sig.ident
+                        ),
+                    },
+                }
+            }
+            let call = quote::quote!{#(#args),*};
+            let call_cloned = quote::quote!{#(#args_cloned),*};
 
             let name = sig.ident.clone();
-            let call = quote::quote!{#(#args),*};
-            let call_cloned = quote::quote!{#(Clone::clone(&#args)),*};
 
             ParsedSignature {
                 name_all: quote::format_ident!("all_{}", name.clone()),

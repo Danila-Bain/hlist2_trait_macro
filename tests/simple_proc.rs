@@ -95,56 +95,45 @@ fn everything_at_once() {
 }
 
 #[test]
-fn generic_into_iter() {
-    todo!();
-    TraitHList!{
-        IntoIteratorHlist for trait IntoIterator<T> {
-            type Item;
-            type IntoIter: Iterator<Item = Self::Item>;
-            fn into_iter(self) -> Self::IntoIter;
-        }
+fn parameters_in_methods() {
+    #[allow(dead_code)]
+    trait MyTrait {
+        fn a(&self, x: &f64, y: &mut u32, z: u8) -> u32;
+        fn b(&mut self, x: &f64, y: &mut u32, z: u8) -> bool;
+        fn c(self, x: &f64, y: &mut u32, z: u8) -> bool;
+        fn extra_one_ignored(self) -> Self;
     }
+
+    TraitHList!(
+        MyTraitHlist for trait MyTrait {
+            fn a(&self, x: &f64, y: &mut u32, z: u8) -> u32;
+            fn b(&mut self, x: &f64, y: &mut u32, z: u8) -> bool;
+            fn c(self, x: &f64, y: &mut u32, z: u8) -> bool;
+        }
+    );
 }
 
-// #[test]
-// fn parameters_in_methods() {
-//     #[allow(dead_code)]
-//     trait MyTrait {
-//         fn a(&self, x: &f64, y: &mut u32, z: u8) -> u32;
-//         fn b(&mut self, x: &f64, y: &mut u32, z: u8) -> bool;
-//         fn c(self, x: &f64, y: &mut u32, z: u8) -> bool;
-//         fn extra_one_ignored(self) -> Self;
-//     }
-//
-//     impl_trait_hlist_proc!(
-//         MyTraitHlist for trait MyTrait {
-//             fn a(&self, x: &f64, y: &mut u32, z: u8) -> u32;
-//             fn b(&mut self, x: &f64, y: &mut u32, z: u8) -> bool;
-//             fn c(self, x: &f64, y: &mut u32, z: u8) -> bool;
-//         }
-//     );
-// }
-//
-// #[test]
-// fn generic_parameters_in_methods() {
-//     #[allow(dead_code)]
-//     trait MyTrait {
-//         fn a(&self, x: impl Copy) -> u32;
-//         fn b<T>(&self, x: T) -> bool;
-//         fn c<T>(&self, x: T) -> bool
-//             where T: std::fmt::Display;
-//         fn extra_one_ignored(self) -> Self;
-//     }
-//
-//     TraitHList!(
-//         MyTraitHlist for trait MyTrait {
-//             fn a(&self, x: impl Copy) -> u32;
-//             fn b<T: Copy>(&self, x: T) -> bool;
-//             fn c<T>(&self, x: T) -> bool
-//                 where T: std::fmt::Display + Copy;
-//         }
-//     );
-// }
+
+#[test]
+fn generic_parameters_in_methods() {
+    #[allow(dead_code)]
+    trait MyTrait {
+        fn a(&self, x: impl Copy) -> u32;
+        fn b<T>(&self, x: T) -> bool;
+        fn c<T>(&self, x: T) -> bool
+            where T: std::fmt::Display;
+        fn extra_one_ignored(self) -> Self;
+    }
+
+    TraitHList!(
+        MyTraitHlist for trait MyTrait {
+            fn a(&self, x: impl Copy) -> u32;
+            fn b<T: Copy>(&self, x: T) -> bool;
+            fn c<T>(&self, x: T) -> bool
+                where T: std::fmt::Display + Copy;
+        }
+    );
+}
 
 //
 // #[test]
