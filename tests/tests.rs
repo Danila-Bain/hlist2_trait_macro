@@ -1,4 +1,4 @@
-use hlist2::hlist;
+use hlist2::{HList, hlist};
 use hlist2_trait_macro::TraitHList;
 
 #[test]
@@ -28,8 +28,7 @@ fn simple_trait() {
     }
 
     TraitHList!(
-        // Comment is ignored
-        MyTraitHlist for trait MyTrait {
+        pub MyTraitHlist for trait MyTrait {
             fn to_u32(&self) -> u32;
             fn to_bool(&self) -> bool;
         }
@@ -201,16 +200,83 @@ fn generic_trait_2() {
     );
 }
 
-#[allow(dead_code)]
 #[test]
-fn generic_return_types() {
-
-    trait MyTrait {
-        type MyType<T> where T: Copy;
+fn push() {
+    pub trait Push<T> {
+        fn push(&mut self, v: &mut Vec<T>);
     }
 
-    impl MyTrait for u64 {
-        type MyType<T> = T where T: Copy;
+    impl Push<i32> for i32 {
+        fn push(&mut self, v: &mut Vec<i32>) {
+            *self += 10;
+            v.push(*self);
+        }
     }
 
+    TraitHList! {
+        PushHList for trait Push<T> {
+            fn push(&mut self, v: &mut Vec<T>);
+        }
+    }
+
+    let mut v = vec![];
+
+    let mut h = hlist![0, 1, 2, 3];
+    for i in 0..h.len() {
+        h.push_at_index(&mut v, i)
+    }
+    for i in 0..h.len() {
+        h.push_at_index(&mut v, i)
+    }
+
+    assert_eq!(v, vec![10, 11, 12, 13, 20, 21, 22, 23]);
+}
+
+#[test]
+fn find_maximum() {
+    pub trait IndexMax<S> {
+        fn index_max(&self, index: &mut usize, max_index: &mut usize, max: &mut S);
+    }
+
+    impl IndexMax<i32> for i32 {
+        fn index_max(&self, index: &mut usize, max_index: &mut usize, max: &mut i32) {
+            if self > max {
+                *max = *self;
+                *max_index = *index;
+            }
+            *index += 1;
+        }
+    }
+
+    TraitHList! {
+        IndexMaxHList for trait IndexMax<S> {
+            fn index_max(&self, index: &mut usize, max_index: &mut usize, max: &mut S);
+        }
+    }
+
+    trait IntoF64 {
+        fn into(self) -> f64;
+    }
+    impl IntoF64 for i32 {
+        fn into(self) -> f64 {
+            self as f64
+        }
+    }
+    TraitHList! {
+        IntoHlist for trait IntoF64 {
+            #[name = hlist_into]
+            fn into(self) -> f64;
+        }
+    }
+
+    let h = hlist![0,2,4,6,8,10,10,8,6,4,2,0];
+
+    let mut max_index = 0;
+    let mut max = -1;
+
+    h.index_max(&mut 0, &mut max_index, &mut max);
+    assert_eq!(max_index, 5);
+    assert_eq!(max, 10);
+
+    assert_eq!(h.hlist_into_at_index(max_index), 10f64);
 }
